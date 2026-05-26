@@ -10,7 +10,7 @@ The toolkit covers three surfaces: **Claude Code** (agents, commands, and skills
 
 ### Skills (`.claude/skills/`)
 
-Six reusable thinking and planning frameworks. Claude Code loads them automatically based on what you ask. For Claude Desktop or Claude.ai, upload individual `SKILL.md` files to Project Knowledge.
+Nine reusable thinking, planning, and strategy frameworks. Claude Code loads them automatically based on what you ask. For Claude Desktop or Claude.ai, upload individual `SKILL.md` files to Project Knowledge.
 
 #### Thinking & Decision-Making
 
@@ -29,6 +29,14 @@ Six reusable thinking and planning frameworks. Claude Code loads them automatica
 | `implementation-spec` | Turn requirements and research into a phased build guide with acceptance criteria | You have a researched problem and need a concrete plan to build it |
 
 These three chain together: elicit requirements → research the approach → spec the build.
+
+#### Strategy & Business Analysis
+
+| Skill | Purpose | Use When |
+|---|---|---|
+| `design-thinking-ideation` | Empathise → Define → Ideate → Prototype → Test workflow for generating and validating solution concepts | You want to move from customer pain points to prototyped, testable ideas |
+| `value-chain-analysis` | Porter's Value Chain — map primary and support activities to find cost and differentiation drivers | You're asking "where in the business is value created or destroyed?" |
+| `vrio-analysis` | VRIO framework — assess whether resources/capabilities deliver sustainable competitive advantage | You're asking "is this defensible — what's our moat?" |
 
 #### Choosing between the thinking skills
 
@@ -175,6 +183,9 @@ Combine the best parts of these three architectures              → graph-of-th
 I want to build a CLI tool for managing deployments              → requirements-elicitation
 Research the best queue library for our Node.js workers          → research-brief
 Write a phased build guide for the new billing module            → implementation-spec
+Run a design thinking exercise on commuter pain points           → design-thinking-ideation
+Map the value chain for this DTC coffee brand                    → value-chain-analysis
+Is our proprietary dataset a sustainable competitive advantage?  → vrio-analysis
 ```
 
 ## Customisation
