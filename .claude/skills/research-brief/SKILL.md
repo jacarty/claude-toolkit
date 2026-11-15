@@ -81,7 +81,7 @@ Use your tools — don't guess when you can look things up:
 - **Web search** — search for libraries, documentation, comparison articles, known pitfalls.
   Run multiple searches with different queries. Refine based on what you find.
 - **Repository access** — if a target repository exists, read relevant files to ground
-  research in the actual codebase. Check for a `CLAUDE.md` or similar project context file.
+  research in the actual codebase. Check for an `AGENTS.md`, `CLAUDE.md` or similar project context file.
 - **Issue tracker** — read issues and comments for context if the research is tied to a
   tracked piece of work.
 
