@@ -1,6 +1,6 @@
-# claude-toolkit
+# coding-toolkit
 
-My GitHub template repository for starting new projects with Claude Code — pre-configured with agents, skills, commands, git hooks, and a codified development process. This is a living repo that evolves as I refine my workflow, so expect it to change over time.
+My GitHub template repository for starting new projects with AI coding agents. It's built around Claude Code, with Codex and Antigravity as cross-model reviewers, and comes pre-configured with agents, skills, commands, hooks, and a codified development process. This is a living repo that evolves as I refine my workflow, so expect it to change over time.
 
 Feel free to fork, clone, or cherry-pick whatever is useful. Not everything will fit your setup — delete what you don't need.
 
@@ -12,7 +12,7 @@ Project instructions live in `AGENTS.md`, which `CLAUDE.md` imports, so Claude C
 
 ### Skills (`.claude/skills/`)
 
-Nine reusable thinking, planning, and strategy frameworks, plus two cross-model review skills. Claude Code loads them automatically based on what you ask. For Claude Desktop or Claude.ai, upload individual `SKILL.md` files to Project Knowledge.
+Nine reusable thinking, planning, and strategy frameworks, three development workflows, and two cross-model review skills. Claude Code loads them automatically based on what you ask. For Claude Desktop or Claude.ai, upload individual `SKILL.md` files to Project Knowledge.
 
 #### Thinking & Decision-Making
 
@@ -40,6 +40,16 @@ These three chain together: elicit requirements → research the approach → sp
 | `value-chain-analysis` | Porter's Value Chain — map primary and support activities to find cost and differentiation drivers | You're asking "where in the business is value created or destroyed?" |
 | `vrio-analysis` | VRIO framework — assess whether resources/capabilities deliver sustainable competitive advantage | You're asking "is this defensible — what's our moat?" |
 
+#### Development Workflows (Claude Code only)
+
+| Skill | Purpose | Use When |
+|---|---|---|
+| `doc-generator` | Creates and updates READMEs, AGENTS.md, docstrings, API docs, changelogs and ADRs; doubles as the pre-PR doc gate | Docs need writing, or a non-trivial PR is about to open |
+| `refactorer` | Framework upgrades, dependency migrations and pattern modernisation, with incremental, test-verified changes | Refactor or migration work is scoped |
+| `code-optimiser` | Finds bottlenecks, N+1 queries, unnecessary allocations and algorithmic waste; reports before editing | Performance is a concern |
+
+These were subagents until they were converted to skills. They work from what the session already knows (the diff, the files just read), so running them in the main conversation saves a cold start that re-reads the same context. Reviewers that need independence stay subagents (below).
+
 #### Cross-Model Review (Claude Code only)
 
 | Skill | Purpose | Use When |
@@ -61,18 +71,14 @@ When in doubt: if the options are already known and few, use Trade-Off Analysis.
 
 ### Agents (`.claude/agents/`)
 
-Nine custom agents that Claude Code delegates to based on context. They can also be invoked explicitly with `@agent-name`.
+Five custom agents that Claude Code delegates to based on context. They can also be invoked explicitly with `@agent-name`. Each runs in its own fresh context, which keeps reviews independent of the session that wrote the code and keeps their verbose reading out of your main conversation.
 
 | Agent | Model | Purpose |
 |---|---|---|
 | `code-reviewer` | Opus | Reviews code for style, complexity, anti-patterns, naming, and architectural smells. Read-only. |
-| `code-optimiser` | Sonnet | Identifies performance bottlenecks, N+1 queries, unnecessary allocations, and algorithmic inefficiencies. Read-only. |
 | `codebase-review` | Sonnet | Scans a repo and produces a structured briefing covering tech stack, architecture, posture assessment, and recommendations. Read-only. |
 | `test-generator` | Sonnet | Generates unit tests, suggests edge cases, and reviews existing tests for quality and coverage gaps. |
-| `doc-generator` | Sonnet | Creates and updates READMEs, docstrings, API docs, changelogs, and Architecture Decision Records. |
 | `devops-reviewer` | Sonnet | Reviews GitHub Actions workflows, Dockerfiles, Kubernetes manifests, and Terraform/CloudFormation templates. |
-| `refactorer` | Sonnet | Handles framework upgrades, dependency migrations, and pattern modernisation with incremental, test-verified changes. |
-| `linter` | Haiku | Detects and auto-fixes formatting issues, unused imports, and style violations. Uses project linter config when present. |
 | `phase-acceptance` | Opus | Validates that a build-guide phase is complete before the PR opens. Checks code against every PRD requirement and verification checkpoint. |
 
 All agents have `memory: project` set, so they accumulate knowledge about this codebase's patterns across sessions.
@@ -88,11 +94,11 @@ All agents have `memory: project` set, so they accumulate knowledge about this c
 
 A codified development process that defines when each agent runs automatically during the PR lifecycle:
 
-- **Pre-commit** — linter runs on every commit
-- **Pre-PR gates** — code-reviewer, devops-reviewer, test-generator, and doc-generator run conditionally based on what changed; antigravity runs on every PR. Findings are folded into the branch before the PR opens
+- **On every edit** — a lint hook formats and lints each edited file with the project's own tools, at no token cost
+- **Pre-PR gates** — code-reviewer, devops-reviewer, test-generator, and the doc-generator skill run conditionally based on what changed; antigravity runs on every PR. Findings are folded into the branch before the PR opens
 - **Phase boundaries** — codebase-review and doc-generator refresh tech-debt tracking and AGENTS.md at the end of each build-guide phase
 - **Phase acceptance** — phase-acceptance validates PRD requirements when a phase closes out
-- **Trivial-change fast path** — small changes (≤ 50 lines, ≤ 2 files, no critical paths) skip all gates except the linter and antigravity
+- **Trivial-change fast path** — small changes (≤ 50 lines, ≤ 2 files, no critical paths) skip all gates except antigravity
 - **No direct commits to main** — docs-only changes go through a `docs/<slug>` PR too
 
 The process doc also covers branch/PR cadence, issue tracking conventions, fold timing for gate findings, and how to handle agent feedback.
@@ -121,22 +127,45 @@ All hooks can be bypassed with `--no-verify` when needed.
 
 ### Claude Code permissions (`.claude/settings.json`)
 
-Pre-approves a minimal core of tool invocations so Claude Code doesn't prompt for confirmation on routine operations. The file is JSONC (JSON with `//` comments).
+Pre-approves a minimal core of tool invocations so Claude Code doesn't prompt for confirmation on routine operations, and wires up the lint hook. The file must be strict JSON: Claude Code treats a `//` comment or a trailing comma as a syntax error and skips the whole file. The `$schema` line gives you validation and autocomplete in most editors.
 
-**Live by default**: git, GitHub CLI, Node.js/npm/npx, Python testing (`pytest`, `ruff`, `python -m`), basic shell utilities (`grep`, `ls`, `find`, etc.), and `WebSearch`.
+**Included by default**: git, GitHub CLI, Node.js/npm/npx, Python testing (`pytest`, `ruff`, `python -m`), basic shell utilities (`grep`, `ls`, `find`, etc.), and `WebSearch`.
 
-**Commented out — uncomment per project:**
+**Optional entries** live in `.claude/settings.example.jsonc`, a commented reference copy that Claude Code doesn't load. Copy the ones you want into `.claude/settings.json` without the comments:
 
-- `uv` and `.venv/bin/*` paths — uncomment if your project uses uv or a repo-root `.venv/` directory
-- `Bash(aws:*)` — uncomment on cloud projects where you trust Claude Code to run AWS CLI commands
-- `Bash(terraform:*)` — uncomment on IaC projects
-- Linear MCP block — uncomment if you have the Linear MCP server connected
+- `uv` and `.venv/bin/*` paths — if your project uses uv or a repo-root `.venv/`
+- `Bash(aws:*)` — on cloud projects where you trust Claude Code to run AWS CLI commands
+- `Bash(terraform:*)` — on IaC projects
+- Linear MCP block — if you have the Linear MCP server connected (read-only `list_*`/`get_*` tools, plus the write tools)
+
+Check what loaded with `/status`; `claude doctor` lists any entry Claude Code rejected.
+
+### Claude Code hooks (`.claude/hooks/`)
+
+| Hook | Trigger | What it does |
+|---|---|---|
+| `lint-edited-file.sh` | After every `Edit`/`Write`/`MultiEdit` (PostToolUse) | Formats and lints the edited file with the project's own tools, then sends only the leftovers back to Claude. |
+
+How it chooses tools:
+
+- **Python:** ruff, from the project's `.venv`, or from your PATH when the project configures ruff (`ruff.toml` or `[tool.ruff]`).
+- **JS/TS:** biome when `biome.json` exists. Otherwise prettier and eslint, each only when configured. All of them come from `node_modules/.bin`.
+- **Others:** gofmt, rustfmt, terraform fmt and shellcheck, when installed.
+
+What to know:
+
+- Nothing is downloaded, and files outside the project (including through symlinks) are skipped.
+- It runs the project's own tooling and config code, so only use it in repos you trust.
+- It needs bash, plus `jq` or `python3`. Tested on Linux; on Windows, use WSL.
+
+This replaces a Haiku `linter` subagent: deterministic tooling does the same job without spending model tokens. Add languages in the script's `case` statement.
 
 ### Configuration files
 
 | File | Purpose |
 |---|---|
-| `.claude/settings.json` | Claude Code tool permissions — pre-approves common dev commands |
+| `.claude/settings.json` | Claude Code tool permissions and hooks — pre-approves common dev commands and wires up the lint hook. Strict JSON |
+| `.claude/settings.example.jsonc` | Commented reference copy of the settings, with the optional entries. Not loaded by Claude Code |
 | `.claudeignore` | Prevents Claude from reading sensitive files — env files, secrets, keys, credentials, Terraform state, and large generated files |
 | `.editorconfig` | Enforces consistent formatting across editors — indent style, line endings, trailing whitespace |
 | `.gitignore` | Comprehensive ignore rules covering Python, Node.js, IDE files, secrets, build outputs, and OS-generated files |
@@ -154,7 +183,7 @@ Pre-approves a minimal core of tool invocations so Claude Code doesn't prompt fo
 4. Update `.github/CODEOWNERS` — replace `@YOUR-GITHUB-USERNAME` with your GitHub handle or team
 5. Update `LICENSE` — replace the `[year]` and `[your name]` placeholders
 6. Fill in `AGENTS.md` with your project's architecture and conventions (look for `[...]` and `<!-- ... -->` placeholders)
-7. Open `.claude/settings.json` and uncomment any optional sections you need
+7. Copy any optional permissions you need from `.claude/settings.example.jsonc` into `.claude/settings.json` (strict JSON: no comments, no trailing commas)
 8. Optional: install and log in to the [`codex`](https://github.com/openai/codex) and Antigravity (`agy`) CLIs for the cross-model review skills
 9. Start Claude Code — all agents, commands, and skills are available immediately
 
@@ -176,7 +205,6 @@ Claude will automatically delegate to the right agent based on what you ask. You
 ```
 # Automatic delegation
 Review the code I just changed
-Lint this project
 Write tests for the auth module
 
 # Explicit invocation
