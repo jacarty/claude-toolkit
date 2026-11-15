@@ -6,11 +6,13 @@ Feel free to fork, clone, or cherry-pick whatever is useful. Not everything will
 
 The toolkit covers three surfaces: **Claude Code** (agents, commands, and skills load automatically), **Claude Desktop** (upload individual skill files to Project Knowledge), and **Claude.ai** (same as Desktop).
 
+Project instructions live in `AGENTS.md`, which `CLAUDE.md` imports, so Claude Code, Codex and Antigravity all read the same rules.
+
 ## What's included
 
 ### Skills (`.claude/skills/`)
 
-Nine reusable thinking, planning, and strategy frameworks. Claude Code loads them automatically based on what you ask. For Claude Desktop or Claude.ai, upload individual `SKILL.md` files to Project Knowledge.
+Nine reusable thinking, planning, and strategy frameworks, plus two cross-model review skills. Claude Code loads them automatically based on what you ask. For Claude Desktop or Claude.ai, upload individual `SKILL.md` files to Project Knowledge.
 
 #### Thinking & Decision-Making
 
@@ -38,6 +40,15 @@ These three chain together: elicit requirements → research the approach → sp
 | `value-chain-analysis` | Porter's Value Chain — map primary and support activities to find cost and differentiation drivers | You're asking "where in the business is value created or destroyed?" |
 | `vrio-analysis` | VRIO framework — assess whether resources/capabilities deliver sustainable competitive advantage | You're asking "is this defensible — what's our moat?" |
 
+#### Cross-Model Review (Claude Code only)
+
+| Skill | Purpose | Use When |
+|---|---|---|
+| `antigravity` | Read-only review from Gemini via the `agy` CLI, run in a clean git worktree | The pre-PR gate on every PR (see `docs/process.md`), or a second opinion on a plan or ADR |
+| `codex` | Read-only review from OpenAI Codex via the `codex` CLI | Ad hoc: a second opinion on uncommitted work, a plan, an ADR or a high-risk change |
+
+A different model family has different blind spots. Both skills need the CLI installed and logged in on your machine; if it isn't, the review is skipped and noted, never blocking. Both send content to the vendor under your account, so they refuse to read secrets, `.env*` files, state files or raw logs. Neither is for unattended agent runs.
+
 #### Choosing between the thinking skills
 
 **Trade-Off Analysis** — fast, decisive, 2-3 known options. "Should I use X or Y?"
@@ -64,7 +75,7 @@ Nine custom agents that Claude Code delegates to based on context. They can also
 | `linter` | Haiku | Detects and auto-fixes formatting issues, unused imports, and style violations. Uses project linter config when present. |
 | `phase-acceptance` | Opus | Validates that a build-guide phase is complete before the PR opens. Checks code against every PRD requirement and verification checkpoint. |
 
-All agents have `memory: user` set, so they accumulate knowledge about your codebase patterns across sessions.
+All agents have `memory: project` set, so they accumulate knowledge about this codebase's patterns across sessions.
 
 ### Commands (`.claude/commands/`)
 
@@ -78,10 +89,11 @@ All agents have `memory: user` set, so they accumulate knowledge about your code
 A codified development process that defines when each agent runs automatically during the PR lifecycle:
 
 - **Pre-commit** — linter runs on every commit
-- **Pre-PR gates** — code-reviewer, devops-reviewer, test-generator, and doc-generator run conditionally based on what changed, with findings folded into the branch before the PR opens
-- **Phase boundaries** — codebase-review and doc-generator refresh tech-debt tracking and CLAUDE.md at the end of each build-guide phase
+- **Pre-PR gates** — code-reviewer, devops-reviewer, test-generator, and doc-generator run conditionally based on what changed; antigravity runs on every PR. Findings are folded into the branch before the PR opens
+- **Phase boundaries** — codebase-review and doc-generator refresh tech-debt tracking and AGENTS.md at the end of each build-guide phase
 - **Phase acceptance** — phase-acceptance validates PRD requirements when a phase closes out
-- **Trivial-change fast path** — small changes (≤ 50 lines, ≤ 2 files, no critical paths) skip all gates except the linter
+- **Trivial-change fast path** — small changes (≤ 50 lines, ≤ 2 files, no critical paths) skip all gates except the linter and antigravity
+- **No direct commits to main** — docs-only changes go through a `docs/<slug>` PR too
 
 The process doc also covers branch/PR cadence, issue tracking conventions, fold timing for gate findings, and how to handle agent feedback.
 
@@ -103,7 +115,7 @@ All hooks can be bypassed with `--no-verify` when needed.
 |---|---|
 | `CODEOWNERS` | Default code ownership — set to a `@YOUR-GITHUB-USERNAME` placeholder you must replace |
 | `SECURITY.md` | Security policy with vulnerability reporting instructions |
-| `pull_request_template.md` | Default PR description with What/Why/How sections and a checklist |
+| `pull_request_template.md` | Default PR description with What/Why/How/Testing sections and a checklist that includes the pre-PR gates |
 | `ISSUE_TEMPLATE/bug_report.yml` | Structured bug report form |
 | `ISSUE_TEMPLATE/feature_request.yml` | Structured feature request form |
 
@@ -128,7 +140,8 @@ Pre-approves a minimal core of tool invocations so Claude Code doesn't prompt fo
 | `.claudeignore` | Prevents Claude from reading sensitive files — env files, secrets, keys, credentials, Terraform state, and large generated files |
 | `.editorconfig` | Enforces consistent formatting across editors — indent style, line endings, trailing whitespace |
 | `.gitignore` | Comprehensive ignore rules covering Python, Node.js, IDE files, secrets, build outputs, and OS-generated files |
-| `CLAUDE.md` | Project context skeleton — fill in your architecture, conventions, and patterns |
+| `AGENTS.md` | Project context skeleton, read by Claude Code, Codex and Antigravity — fill in your architecture, conventions, and patterns |
+| `CLAUDE.md` | One line, `@AGENTS.md`, so Claude Code loads the shared instructions. Don't add content here |
 | `LICENSE` | MIT licence — placeholder copyright holder you must replace |
 
 ## Getting started
@@ -137,12 +150,13 @@ Pre-approves a minimal core of tool invocations so Claude Code doesn't prompt fo
 
 1. Click **Use this template** on GitHub to create a new repository
 2. Clone your new repo
-3. Enable git hooks: `./githooks/setup-hooks.sh`
+3. Enable git hooks: `./.githooks/setup-hooks.sh`
 4. Update `.github/CODEOWNERS` — replace `@YOUR-GITHUB-USERNAME` with your GitHub handle or team
 5. Update `LICENSE` — replace the `[year]` and `[your name]` placeholders
-6. Fill in `CLAUDE.md` with your project's architecture and conventions (look for `<!-- ... -->` placeholders)
+6. Fill in `AGENTS.md` with your project's architecture and conventions (look for `[...]` and `<!-- ... -->` placeholders)
 7. Open `.claude/settings.json` and uncomment any optional sections you need
-8. Start Claude Code — all agents, commands, and skills are available immediately
+8. Optional: install and log in to the [`codex`](https://github.com/openai/codex) and Antigravity (`agy`) CLIs for the cross-model review skills
+9. Start Claude Code — all agents, commands, and skills are available immediately
 
 ### Claude Desktop or Claude.ai (skills only)
 

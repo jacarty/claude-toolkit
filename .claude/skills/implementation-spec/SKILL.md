@@ -54,7 +54,7 @@ Collect the inputs that ground the spec:
   a tracked issue. If no research brief exists, stop and say so — a spec without
   research is guesswork.
 - **Codebase context** — if a target repository exists, read key files using whatever
-  tools are available. At minimum check for a `CLAUDE.md` or similar project context
+  tools are available. At minimum check for an `AGENTS.md`, `CLAUDE.md` or similar project context
   file, and any files referenced in the research brief's recommended approach. This
   grounds the spec in the actual codebase rather than abstract assumptions.
 - **Issue context** — if the work is tracked in a project tracker, read the issue and
