@@ -42,19 +42,17 @@ The local agent gates below run **before** the PR opens, so the remote reviewers
 
 ## Agent cadence (local, while working with Claude Code)
 
-All agents are defined in `.claude/agents/`; the cross-model reviewers are skills in `.claude/skills/`. This is the policy for **when to invoke each one automatically** vs when to use it ad-hoc.
+Reviewers that benefit from a fresh, independent context are subagents in `.claude/agents/`. Workflows that build on what the session already knows (docs, refactoring, optimisation) and the cross-model reviewers are skills in `.claude/skills/`, and run in the main conversation. Mechanical cleanup is a hook. This is the policy for **when to invoke each one automatically** vs when to use it ad-hoc.
 
-### Pre-commit (always, except trivial)
+### On every edit (automatic)
 
-| Agent | Trigger | Why |
-|---|---|---|
-| **linter** | After the last edit in a session, before `git add` | Haiku-speed cleanup of formatting, unused imports, style violations. Cheap enough to run unconditionally. |
+The **lint hook** (`.claude/hooks/lint-edited-file.sh`, wired up in `.claude/settings.json`) formats and lints each file Claude edits with the project's own tools, and reports back only what it couldn't auto-fix. It costs no model tokens and needs no invoking. Tools that aren't installed are skipped, so make sure the project's formatter and linter are installed, or the hook does nothing.
 
 **Self-check before every commit** (not agent-gated — just do it):
 
 1. `git status` — verify only intended files are staged. No stray config files, lockfile churn, or editor artefacts.
 2. `git diff --cached --name-only` — scan the list. If anything looks unrelated, unstage it.
-3. Run lint and tests locally. Do not push code that fails lint or tests.
+3. Run the project's full lint and tests locally (the hook only checks edited files). Do not push code that fails lint or tests.
 4. Check that nothing staged contains credentials, environment values, account IDs, project numbers, service-account emails or raw logs. Write as if the repo will be public.
 
 These steps prevent the most common friction: unrelated files in commits, unused imports breaking CI, leaked identifiers, and bugs caught late by reviewers that should have been caught locally.
@@ -80,7 +78,7 @@ Either way, all findings land on the branch before the PR opens.
 | **code-reviewer** | Net diff ≥ 300 lines • touches core business logic • touches IAM/auth/permissions • introduces a new function/handler/endpoint • explicitly requested |
 | **devops-reviewer** | Touches IaC files (including lock files) • touches CI/CD workflows • changes compute config (runtime, memory, timeout, entry point) • touches git hooks, `.claude/settings.json` or other tooling config |
 | **test-generator** | A new exported function lands without tests • a new handler/endpoint lands without tests • handler logic grows > 100 net lines in a PR • explicitly requested |
-| **doc-generator** | Any non-trivial PR (i.e. doesn't qualify for the trivial-change fast path). Runs after code-reviewer findings are folded in. Writes doc updates directly to the branch — AGENTS.md drift, README updates, inline docs for new exports, ADR drafts for design decisions. |
+| **doc-generator** (skill) | Any non-trivial PR (i.e. doesn't qualify for the trivial-change fast path). Runs in the main session after code-reviewer findings are folded in. Writes doc updates directly to the branch — AGENTS.md drift, README updates, inline docs for new exports, ADR drafts for design decisions. |
 | **phase-acceptance** | PR completes a build-guide phase (not every PR within a phase — just the final PR that closes out a phase). Reads the relevant PRD section + build guide verification checklist and checks the code against every requirement. |
 | **antigravity** | **Every PR**, trivial ones included, alongside the other pre-PR gates. A read-only review from Gemini, a different model family (skill `.claude/skills/antigravity/`, section 1), run in a clean worktree. Its findings are handled like any gate's. If the `agy` CLI is missing or logged out, say so in the PR body; it doesn't block the PR. |
 
@@ -94,12 +92,12 @@ Either way, all findings land on the branch before the PR opens.
 | Agent | Cadence |
 |---|---|
 | **codebase-review** | End of each build-guide phase. Refreshes tech-debt tracking. |
-| **doc-generator** | Paired with the phase-end codebase-review. Drives AGENTS.md refresh, architecture diagram updates, and ADRs for decisions that accumulated during the phase. |
+| **doc-generator** (skill) | Paired with the phase-end codebase-review. Drives AGENTS.md refresh, architecture diagram updates, and ADRs for decisions that accumulated during the phase. |
 
 ### Ad-hoc (no automatic trigger)
 
-- **code-optimiser** — when performance concerns arise
-- **refactorer** — when explicit refactor work is scoped (e.g. dependency upgrade, pattern migration)
+- **code-optimiser** (skill) — when performance concerns arise. Reports findings before changing anything.
+- **refactorer** (skill) — when explicit refactor work is scoped (e.g. dependency upgrade, pattern migration)
 - **Explore** — general codebase searching that exceeds what `Grep` / `Glob` can handle
 - **general-purpose** — fallback for open-ended research
 - **antigravity** — beyond the pre-PR gate, use it to challenge a plan, PRD or ADR before any code exists (section 2 of the skill). Local only.
@@ -113,11 +111,11 @@ If a PR is **all** of the following:
 - No changes to IaC, CI/CD workflows, git hooks, tooling config (e.g. `.claude/settings.json`), or core business logic
 - No new exports, handlers, routes, or endpoints
 
-...then only the **linter** and **antigravity** run. No other second-opinion agents. Prevents overhead on one-line fixes, typo corrections, and small docs tweaks. The remote gates still run.
+...then only **antigravity** runs (the lint hook runs regardless). No other second-opinion agents. Prevents overhead on one-line fixes, typo corrections, and small docs tweaks. The remote gates still run.
 
 ## Parallel execution
 
-When multiple pre-PR gates apply, **spawn the agents in parallel**, not sequentially. `code-reviewer` + `devops-reviewer` + `test-generator` + `antigravity` typically finish much faster in parallel. Same for phase-boundary agents — `codebase-review` + `doc-generator` can run concurrently.
+When multiple pre-PR gates apply, **spawn the agents in parallel**, not sequentially. `code-reviewer` + `devops-reviewer` + `test-generator` + `antigravity` (in the background) typically finish much faster in parallel. Run the `doc-generator` skill once their findings are folded in, so the docs describe the final code. At phase boundaries — `codebase-review` runs as a subagent while `doc-generator` runs in the main session.
 
 ## When an agent or gate flags something
 

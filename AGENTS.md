@@ -6,7 +6,7 @@
 
 **PRD:** `docs/prd/v1.0-prd.md`
 **Build Guide:** `docs/build-guides/v1.0-build-guide.md`
-**Process:** `docs/process.md` — branch/PR cadence, pre-commit + pre-PR agent gates, trivial-change fast path, phase-boundary rituals. Read this before any feature work.
+**Process:** `docs/process.md` — branch/PR cadence, the on-edit lint hook, pre-PR agent gates, trivial-change fast path, phase-boundary rituals. Read this before any feature work.
 
 ---
 
@@ -96,7 +96,7 @@ main                    ← production; protected
 
 For automated PR reviewers that read this file (for example Codex's GitHub integration):
 
-- Flag **blocking issues only** (P0/P1). Leave style and small refactors to the linter.
+- Flag **blocking issues only** (P0/P1). Leave style and small refactors to the project's linters.
 - **Security first:** injection (shell, SQL, template, GitHub Actions expressions in `run:` steps), secrets or credentials in code, logs or output, authentication and authorisation gaps, unsafe deserialisation, and workflows that check out or run PR code with elevated permissions.
 - **Then correctness:** wrong results, crashes, data loss, broken idempotency.
 - **Then leakage:** anything that could expose private data: account IDs, project numbers, service-account emails, request bodies, raw logs.
@@ -108,4 +108,4 @@ For automated PR reviewers that read this file (for example Codex's GitHub integ
 
 ## Updating this document
 
-This file is maintained by the **doc-generator** agent at phase boundaries and should reflect the current state of the codebase. If you notice drift between this document and reality, fix it — stale context is worse than no context.
+This file is maintained with the **doc-generator** skill at phase boundaries and should reflect the current state of the codebase. If you notice drift between this document and reality, fix it — stale context is worse than no context.
