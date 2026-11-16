@@ -8,7 +8,7 @@
 - One PR per branch. Run every pre-PR gate below and fold their fixes into the branch **before** opening the PR. Squash-merge to `main` and delete the branch on merge.
 - **Nothing commits directly to `main`, including docs-only changes** (status log, tech-debt, process doc, ADRs). Docs go on a `docs/<slug>` branch and through a PR. Small ones usually qualify for the trivial-change fast path.
 
-**Branch naming:** `<type>/<slug>`, where `<type>` is a Conventional Commits type (`feat`, `fix`, `docs`, `ci`, `chore`, `refactor`, `test`, …).
+**Branch naming:** `<type>/<slug>`, where `<type>` is a Conventional Commits type (`feat`, `fix`, `docs`, `ci`, `chore`, `refactor`, `test`, …). Branches and commit messages use the same set of types (the hooks enforce both).
 
 <!-- Customise to match your project, e.g.:
 - feat/v1-1a-<slug> — for build-guide sub-sections (the pre-push hook allows only lowercase letters, digits and hyphens after the type)

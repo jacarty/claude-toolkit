@@ -131,6 +131,17 @@ Pre-approves a minimal core of tool invocations so Claude Code doesn't prompt fo
 
 **Included by default**: git, GitHub CLI, Node.js/npm/npx, Python testing (`pytest`, `ruff`, `python -m`), basic shell utilities (`grep`, `ls`, `find`, etc.), and `WebSearch`.
 
+**Denied by default**: reading these files and directories.
+
+- **In the project, at any depth:** environment files (committed templates like `.env.example` stay readable), private keys, SSH keys, `.netrc` and `.git-credentials`, `secrets/` and `credentials/` directories, cloud CLI config, and Terraform state and variables.
+- **In your home directory:** SSH private keys and cloud and registry credentials (`~/.aws`, gcloud, docker, kube, `.netrc`, `.npmrc`, `.pypirc`).
+
+`settings.example.jsonc` explains each group and lists project-level opt-ins.
+
+A `Read` deny rule also blocks editing and writing those paths. It covers Claude's file tools and the file commands Claude Code recognises in Bash (`cat`, `head`, redirections). It doesn't cover a script, or a command like `grep -r`, that reads files without naming them. For OS-level enforcement, enable Claude Code's sandbox. Add your project's own secret paths to `permissions.deny`, and narrow any default that blocks legitimate code (for example a `src/credentials/` directory).
+
+Claude Code doesn't support a `.claudeignore` file, so this toolkit uses deny rules instead.
+
 **Optional entries** live in `.claude/settings.example.jsonc`, a commented reference copy that Claude Code doesn't load. Copy the ones you want into `.claude/settings.json` without the comments:
 
 - `uv` and `.venv/bin/*` paths — if your project uses uv or a repo-root `.venv/`
@@ -164,9 +175,8 @@ This replaces a Haiku `linter` subagent: deterministic tooling does the same job
 
 | File | Purpose |
 |---|---|
-| `.claude/settings.json` | Claude Code tool permissions and hooks — pre-approves common dev commands and wires up the lint hook. Strict JSON |
+| `.claude/settings.json` | Claude Code tool permissions and hooks — pre-approves common dev commands, denies reading secrets, and wires up the lint hook. Strict JSON |
 | `.claude/settings.example.jsonc` | Commented reference copy of the settings, with the optional entries. Not loaded by Claude Code |
-| `.claudeignore` | Prevents Claude from reading sensitive files — env files, secrets, keys, credentials, Terraform state, and large generated files |
 | `.editorconfig` | Enforces consistent formatting across editors — indent style, line endings, trailing whitespace |
 | `.gitignore` | Comprehensive ignore rules covering Python, Node.js, IDE files, secrets, build outputs, and OS-generated files |
 | `AGENTS.md` | Project context skeleton, read by Claude Code, Codex and Antigravity — fill in your architecture, conventions, and patterns |

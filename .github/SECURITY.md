@@ -25,7 +25,7 @@ Only the latest version on the `main` branch is actively maintained.
 
 This repository includes several security measures:
 
-- **`.claudeignore`** — prevents AI tools from reading sensitive files
+- **Claude Code deny rules** (`permissions.deny` in `.claude/settings.json`) — stop Claude Code reading or editing environment files, keys, credentials and Terraform state. This is best-effort: a script, or a command like `grep -r`, that reads files without naming them isn't covered, so enable Claude Code's sandbox where you need enforcement. Other AI tools (Codex, Antigravity) don't read these rules; the cross-model review skills run them in a clean git worktree instead.
 - **`.gitignore`** — excludes secrets, credentials, and environment files from version control
 - **Pre-commit hooks** — scan for secrets and credentials before they enter git history
 - **Dependency management** — keep dependencies updated and audit regularly
