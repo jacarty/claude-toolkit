@@ -1,4 +1,6 @@
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+
   // REFERENCE ONLY — Claude Code does not load this file.
   //
   // The live file is .claude/settings.json. Claude Code reads it as strict
@@ -125,6 +127,84 @@
       // "mcp__claude_ai_Linear__create_document",
       // "mcp__claude_ai_Linear__create_issue_label",
       // "mcp__claude_ai_Linear__update_document"
+    ],
+
+    // ── Deny: files Claude must not read ───────────────────────────────────
+    // A Read deny rule also blocks Edit and Write on the same path. It covers
+    // Claude's file tools, `@file` mentions, and file commands Claude Code
+    // recognises in Bash (cat, head, tail, sed, tee, redirections). It does
+    // NOT stop a script or `grep -r` that reads files without naming them;
+    // for OS-level enforcement, enable the sandbox.
+    //
+    // `/**/x` matches x anywhere in the project (anchored at the project
+    // root); `~/x` is under your home directory; an unanchored `x` matches at
+    // any depth below the current directory. Paths use gitignore syntax. A
+    // `!x` rule carves x back out of the unanchored rules listed before it.
+    // Add your own secret locations here. (This replaces .claudeignore,
+    // which Claude Code never supported.)
+    "deny": [
+      // Environment files. Unanchored on purpose: a `!` carve-out only reopens
+      // paths for unanchored rules, and these keep committed templates readable.
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(*.env)",
+      "Read(!.env.example)",
+      "Read(!.env.sample)",
+      "Read(!.env.template)",
+
+      // Private keys and credentials. `*.pem` and `*.key` can also match public
+      // certificates or test fixtures; narrow them if that gets in the way.
+      "Read(/**/*.key)",
+      "Read(/**/*.pem)",
+      "Read(/**/*.p12)",
+      "Read(/**/*.pfx)",
+      "Read(/**/*.jks)",
+      "Read(/**/*.keystore)",
+      "Read(/**/id_rsa)",
+      "Read(/**/id_ed25519)",
+      "Read(/**/id_ecdsa)",
+      "Read(/**/id_dsa)",
+      "Read(/**/*.secret)",
+      "Read(/**/*.password)",
+      "Read(/**/.netrc)",
+      "Read(/**/.git-credentials)",
+
+      // Secret directories. `secrets/` and `credentials/` match at any depth, which
+      // also catches source or k8s directories with those names. Narrow or
+      // remove these if your project has code there (a Read deny also blocks
+      // editing). `/private/` is the project root only.
+      "Read(/private/**)",
+      "Read(/**/secrets/**)",
+      "Read(/**/credentials/**)",
+      "Read(/**/.aws/credentials)",
+      "Read(/**/.aws/config)",
+      "Read(/**/.kube/config)",
+
+      // Credentials in your home directory
+      "Read(~/.ssh/id_*)",
+      "Read(~/.aws/credentials)",
+      "Read(~/.aws/config)",
+      "Read(~/.config/gcloud/**)",
+      "Read(~/.docker/config.json)",
+      "Read(~/.kube/config)",
+      "Read(~/.netrc)",
+      "Read(~/.git-credentials)",
+      "Read(~/.npmrc)",
+      "Read(~/.pypirc)",
+
+      // Opt in per project: uncomment to add (often committed with registry
+      // settings only, but can hold tokens)
+      // "Read(/**/.npmrc)",
+      // "Read(/**/.pypirc)",
+      // "Read(/**/.envrc)",
+
+      // Cloud / IaC state and variables (may contain secrets)
+      "Read(/**/*.tfvars)",
+      "Read(/**/*.tfvars.json)",
+      "Read(/**/*.tfstate)",
+      "Read(/**/*.tfstate.*)",
+      "Read(/**/backend.conf)",
+      "Read(/**/backend-*.conf)"
     ]
   },
 

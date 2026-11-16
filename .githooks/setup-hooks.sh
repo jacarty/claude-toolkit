@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # Sets up git hooks for this repository.
-# Run once after cloning: ./setup-hooks.sh
+# Run once after cloning, from the repo root: ./.githooks/setup-hooks.sh
 #
 # This configures git to use .githooks/ as the hooks directory,
 # so hooks are version-controlled and shared with anyone who clones the repo.

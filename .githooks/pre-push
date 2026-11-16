@@ -31,7 +31,7 @@ fi
 # - type must match conventional commit types
 # - description uses lowercase, numbers, and hyphens
 # - no uppercase, no spaces, no special characters
-VALID_TYPES="feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|hotfix|release"
+VALID_TYPES="feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert"
 BRANCH_PATTERN="^($VALID_TYPES)/[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$"
 
 if ! echo "$BRANCH" | grep -qE "$BRANCH_PATTERN"; then
@@ -40,7 +40,7 @@ if ! echo "$BRANCH" | grep -qE "$BRANCH_PATTERN"; then
     echo "" >&2
     echo "  Expected format: ${GREEN}<type>/<short-description>${NC}" >&2
     echo "" >&2
-    echo "  Valid types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert, hotfix, release" >&2
+    echo "  Valid types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert" >&2
     echo "" >&2
     echo "  Rules:" >&2
     echo "    - Lowercase only, no spaces" >&2
