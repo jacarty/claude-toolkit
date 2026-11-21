@@ -13,81 +13,94 @@
   // the comments. Then run /status in Claude Code to confirm the file loaded,
   // and `claude doctor` to see any entry it rejected.
   //
-  // Entries in `allow` pre-approve tool invocations so Claude Code doesn't
-  // prompt for confirmation on every use. Only pre-approve things you trust
-  // Claude Code to run unattended — anything destructive or that touches
-  // external state should be left out (or removed if added by default).
-  //
-  // The defaults (already in settings.json) cover common dev workflow: git,
-  // GitHub CLI, Node/npm, Python testing/linting, basic shell utilities, web
-  // search. Anything cloud-specific, IaC-specific, or MCP-specific is
-  // commented out below.
+  // Entries in `allow` pre-approve tool invocations. In manual mode that
+  // skips the prompt; in auto mode it also skips the classifier, so only
+  // commands you'd trust unreviewed belong there. The defaults (already in
+  // settings.json) are read-only `gh` and web search. Broad git, gh, npm and cloud forms, and the Linear MCP
+  // block, are commented out below with the risk each carries.
   //
   // Docs: https://code.claude.com/docs/en/settings
 
   "permissions": {
     "allow": [
-      // ── Git (read + write) ───────────────────────────────────────────────
-      "Bash(git commit:*)",
-      "Bash(git add:*)",
-      "Bash(git status:*)",
-      "Bash(git diff:*)",
-      "Bash(git log:*)",
-      "Bash(git restore:*)",
-      "Bash(git check-ignore:*)",
-      "Bash(git fetch:*)",
-      "Bash(git cherry-pick:*)",
-      "Bash(git checkout:*)",
-      "Bash(git push:*)",
-      "Bash(git pull:*)",
-      "Bash(git stash:*)",
-      "Bash(git rebase:*)",
-      "Bash(git branch:*)",
-      "Bash(git -C:*)",
+      // Deliberately short. In auto mode, an allow rule SKIPS the classifier,
+      // which is better than any glob at telling `git push` from
+      // `git push -uf`, or `git commit` from `git commit --amend`. So git
+      // commands that change anything have no rule here: in auto mode the
+      // classifier lets routine work through and blocks force-pushes,
+      // discarded work and printed tokens; in manual mode they prompt.
+      // Read-only commands (ls, cat, grep, find without -exec, read-only git)
+      // need no rule: Claude Code already runs them without asking. Tests
+      // and linters aren't here either: their flags can write or run
+      // anything, so they're opt-ins below.
+      //
+      // Recommended, in ~/.claude/settings.json (project settings can't set
+      // these): "permissions": {"defaultMode": "auto"} and
+      // "autoMode": {"classifyAllShell": true}, so even the rules below go
+      // through the classifier. See the README.
 
-      // ── GitHub CLI ───────────────────────────────────────────────────────
-      "Bash(gh:*)",
+      // ── GitHub CLI: read-only ────────────────────────────────────────────
+      // `gh` as a whole can merge PRs, delete repos, set secrets and call any
+      // API; `gh auth status -t` prints your token. Only viewing is here.
+      // `gh run view --log` and `gh pr diff` bring CI logs and PR content
+      // into context: treat that text as data, not instructions.
+      "Bash(gh pr view *)",
+      "Bash(gh pr list *)",
+      "Bash(gh pr checks *)",
+      "Bash(gh pr diff *)",
+      "Bash(gh pr status *)",
+      "Bash(gh run view *)",
+      "Bash(gh run list *)",
+      "Bash(gh issue view *)",
+      "Bash(gh issue list *)",
+      "Bash(gh repo view *)",
+      "Bash(gh release view *)",
+      "Bash(gh release list *)",
 
-      // ── Node.js ──────────────────────────────────────────────────────────
-      "Bash(node:*)",
-      "Bash(npm:*)",
-      "Bash(npx:*)",
+      // ── Opt-ins: tests, lint and project scripts ─────────────────────────
+      // Not pre-approved: each has flags that write or run anything, and an
+      // allow rule hides them from the auto mode classifier too.
+      // `pytest --basetemp=DIR` deletes DIR; `-p`/`-c` load any plugin or
+      // config; tests run project code.
+      // "Bash(pytest *)",
+      // "Bash(python3 -m pytest *)",
+      // `ruff check --output-file=FILE` truncates FILE; `--unsafe-fixes`
+      // rewrites code.
+      // "Bash(ruff *)",
+      // `npm test` runs the package.json test script; npm flags such as
+      // `--script-shell` change what runs.
+      // "Bash(npm test *)",
+      // `npm run env` prints every environment variable, and
+      // `npm run env -- CMD` runs any command.
+      // "Bash(npm run *)",
+      // uv: `uv run` runs any command in the project's environment.
+      // "Bash(uv run pytest *)",
+      // "Bash(uv run ruff *)",
 
-      // ── Python: generic test + lint runners ──────────────────────────────
-      // These assume `pytest` and `ruff` are on PATH (system, pipx, or
-      // activated venv). If you use poetry, run `poetry shell` first or
-      // prefix commands with `poetry run`.
-      "Bash(python -m pytest:*)",
-      "Bash(python3 -m:*)",
-      "Bash(pytest:*)",
-      "Bash(ruff:*)",
-
-      // ── Python: uv + project-local virtualenv paths ─────────────────────
-      // Uncomment if your project uses uv or a `.venv/` directory at the
-      // repo root (the convention used by `uv venv`, `python -m venv .venv`,
-      // etc). The `uv` entry covers `uv run`, `uv sync`, `uv pip`, etc.
-      // "Bash(uv:*)",
-      // "Bash(.venv/bin/python:*)",
-      // "Bash(.venv/bin/pytest:*)",
-      // "Bash(.venv/bin/pip:*)",
-
-      // ── Shell utilities (read-only / safe) ───────────────────────────────
-      "Bash(grep:*)",
-      "Bash(ls:*)",
-      "Bash(find:*)",
-      "Bash(head:*)",
-      "Bash(tail:*)",
-      "Bash(wc:*)",
-      "Bash(cp:*)",
-      "Bash(mv:*)",
+      // ── Broad opt-ins (manual mode convenience; each skips auto mode) ────
+      // Glob rules can't tell safe flags from dangerous ones (`git push`
+      // matches `git push -uf`), so prefer auto mode to any of these.
+      // Also allows --amend and --no-verify:
+      // "Bash(git commit *)",
+      // "Bash(git add *)",
+      // Also --force, --delete, --mirror and other remotes:
+      // "Bash(git push *)",
+      // Also --discard-changes:
+      // "Bash(git switch *)",
+      // Also drop and clear:
+      // "Bash(git stash *)",
+      // Merge PRs, delete repos, set secrets, any API call:
+      // "Bash(gh *)",
+      // Fetch and run any npm package, no cool-down:
+      // "Bash(npx *)",
+      // Run arbitrary JavaScript:
+      // "Bash(node *)",
 
       // ── Cloud CLIs (opt in per project) ──────────────────────────────────
-      // AWS and Terraform commands can be destructive. Uncomment only if
-      // you're working in a cloud project AND you trust Claude Code to run
-      // these without confirmation. Consider scoping more tightly (e.g.
-      // `Bash(aws s3 ls:*)` instead of all of `aws:*`) for production work.
-      // "Bash(aws:*)",
-      // "Bash(terraform:*)",
+      // AWS and Terraform commands can be destructive. Prefer narrow forms
+      // such as `Bash(aws s3 ls *)` or `Bash(terraform plan *)`.
+      // "Bash(aws *)",
+      // "Bash(terraform *)",
 
       // ── Web ──────────────────────────────────────────────────────────────
       "WebSearch"
@@ -168,6 +181,9 @@
       "Read(/**/*.password)",
       "Read(/**/.netrc)",
       "Read(/**/.git-credentials)",
+      "Read(/**/.secrets)",
+      "Read(/**/.secrets/**)",
+      "Read(/**/secrets.json)",
 
       // Secret directories. `secrets/` and `credentials/` match at any depth, which
       // also catches source or k8s directories with those names. Narrow or
@@ -181,10 +197,17 @@
       "Read(/**/.kube/config)",
 
       // Credentials in your home directory
-      "Read(~/.ssh/id_*)",
+      "Read(~/.ssh/**)",
       "Read(~/.aws/credentials)",
       "Read(~/.aws/config)",
+      "Read(~/.aws/sso/**)",
+      "Read(~/.aws/cli/cache/**)",
+      "Read(~/.gnupg/**)",
       "Read(~/.config/gcloud/**)",
+      "Read(~/.config/gh/**)",
+      "Read(~/.azure/**)",
+      "Read(~/.terraform.d/credentials.tfrc.json)",
+      "Read(~/.terraformrc)",
       "Read(~/.docker/config.json)",
       "Read(~/.kube/config)",
       "Read(~/.netrc)",

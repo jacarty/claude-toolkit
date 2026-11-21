@@ -14,14 +14,42 @@ Thumbs.db
 *.swo
 *~
 
-# Secrets and env files
+# Secrets and env files (committed templates like .env.example stay tracked)
 .env
-.env.local
-.env.development
-.env.production
+.env.*
+*.env
+!.env.example
+!.env.sample
+!.env.template
 .secrets
 *.pem
 *.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+.netrc
+.git-credentials
+id_rsa*
+id_ed25519*
+id_ecdsa*
+id_dsa*
+*.secret
+*.password
+
+# Terraform state and variables (can hold secrets)
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+.terraform/
+
+# Node.js
+node_modules/
+
+# Claude Code: personal settings and worktrees (/create_worktree)
+.claude/settings.local.json
+.trees/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -39,8 +67,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
 parts/
 sdist/
 var/
@@ -79,7 +105,6 @@ coverage.xml
 *.pot
 
 # Django stuff:
-*.log
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
@@ -104,8 +129,7 @@ target/
 profile_default/
 ipython_config.py
 
-# pyenv
-.python-version
+# pyenv: .python-version isn't ignored; commit it to share the pinned Python version
 
 # pipenv
 #__Pipfile.lock
@@ -121,8 +145,6 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
-.venv
 .venv*
 env/
 venv/
