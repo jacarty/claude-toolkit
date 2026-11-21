@@ -161,12 +161,46 @@ Actions are pinned to commit SHAs, and the job token is read-only.
 
 Pre-approves a minimal core of tool invocations so Claude Code doesn't prompt for confirmation on routine operations, and wires up the lint hook. The file must be strict JSON: Claude Code treats a `//` comment or a trailing comma as a syntax error and skips the whole file. The `$schema` line gives you validation and autocomplete in most editors.
 
-**Included by default**: git, GitHub CLI, Node.js/npm/npx, Python testing (`pytest`, `ruff`, `python -m`), basic shell utilities (`grep`, `ls`, `find`, etc.), and `WebSearch`.
+**Use auto mode.** In auto mode, a classifier reviews each action by what it does, not how it's spelled. It lets routine git work through and blocks force-pushes, discarded uncommitted work, `--amend` on commits from outside the session, printed tokens and download-and-run. An `allow` rule *skips* that classifier, so this template keeps the allow list short on purpose. Project settings can't turn auto mode on, so set it once in your user settings, `~/.claude/settings.json`:
+
+```json
+{
+  "permissions": { "defaultMode": "auto" },
+  "autoMode": { "classifyAllShell": true }
+}
+```
+
+`classifyAllShell` (Claude Code v2.1.193 or later) sends even allow-listed shell commands through the classifier. Merge these keys into your existing file rather than replacing it.
+
+**Allowed by default** (`.claude/settings.json`):
+
+- **Read-only `gh`:** viewing PRs, runs, issues, releases and the repo. Not `gh auth status`, whose `-t` flag prints your token.
+- **`WebSearch`.**
+
+That's all. A rule ending in `*` approves every flag, and most tools have flags that write or run anything:
+
+- `pytest --basetemp=DIR` deletes `DIR`;
+- `ruff check --output-file=FILE` truncates `FILE`;
+- `npm run env -- CMD` runs any command.
+
+So tests, linters and scripts aren't pre-approved either.
+
+Read-only shell commands (`ls`, `cat`, `grep`, `find` without `-exec`, read-only `git`) need no rule: Claude Code already runs them without asking.
+
+**Everything else** goes to the classifier in auto mode, or prompts in manual mode. That includes:
+
+- every git command that changes something (`add`, `commit`, `push`, `switch`, `stash`, …);
+- tests, linters and project scripts (`pytest`, `ruff`, `npm test`, `npm run`);
+- `gh` beyond reading;
+- `npx`, `npm install` and `npm ci`, which run dependency install scripts and skip the 7-day cool-down;
+- `node`.
+
+Glob rules can't tell `git push` from `git push -uf`, or a `-n` flag from `-n` inside a commit message, so the template doesn't try: it leaves these to the classifier. **In manual mode that means a prompt for every commit, push and test run.** To cut that down, choose "Yes, and don't ask again" for the exact commands you trust, which saves them to your `.claude/settings.local.json`, or copy narrow opt-ins from `settings.example.jsonc`. Auto mode is the better fix.
 
 **Denied by default**: reading these files and directories.
 
 - **In the project, at any depth:** environment files (committed templates like `.env.example` stay readable), private keys, SSH keys, `.netrc` and `.git-credentials`, `secrets/` and `credentials/` directories, cloud CLI config, and Terraform state and variables.
-- **In your home directory:** SSH private keys and cloud and registry credentials (`~/.aws`, gcloud, docker, kube, `.netrc`, `.npmrc`, `.pypirc`).
+- **In your home directory:** `~/.ssh`, `~/.gnupg`, and cloud, GitHub CLI and registry credentials (`~/.aws` including SSO and CLI-cache tokens, gcloud, `~/.config/gh`, Azure, Terraform, docker, kube, `.netrc`, `.npmrc`, `.pypirc`).
 
 `settings.example.jsonc` explains each group and lists project-level opt-ins.
 
@@ -176,10 +210,12 @@ Claude Code doesn't support a `.claudeignore` file, so this toolkit uses deny ru
 
 **Optional entries** live in `.claude/settings.example.jsonc`, a commented reference copy that Claude Code doesn't load. Copy the ones you want into `.claude/settings.json` without the comments:
 
-- `uv` and `.venv/bin/*` paths — if your project uses uv or a repo-root `.venv/`
-- `Bash(aws:*)` — on cloud projects where you trust Claude Code to run AWS CLI commands
-- `Bash(terraform:*)` — on IaC projects
-- Linear MCP block — if you have the Linear MCP server connected (read-only `list_*`/`get_*` tools, plus the write tools)
+- **Tests, lint and scripts:** `pytest`, `ruff`, `npm test`, `npm run`, and uv's `uv run pytest` and `uv run ruff`. Each comes with the flag that makes it dangerous.
+- **Broad forms for manual-mode convenience:** `git commit *`, `git push *`, `gh *`, `npx *` and others, each with the risk it carries.
+- **Cloud CLIs:** `Bash(aws *)` and `Bash(terraform *)`, or the narrower `aws s3 ls *` and `terraform plan *`.
+- **Linear MCP block:** if you have the Linear MCP server connected (read-only `list_*`/`get_*` tools, plus the write tools).
+
+Every opt-in also skips the auto mode classifier, so add only what you'd trust unreviewed.
 
 Check what loaded with `/status`; `claude doctor` lists any entry Claude Code rejected.
 
