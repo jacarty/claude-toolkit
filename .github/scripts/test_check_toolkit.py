@@ -241,6 +241,106 @@ class LinkTests(RepoTestCase):
         self.assertEqual(sorted(f.path for f in ck.check_links(self.root)), ["docs/build/guide.md", "notes.markdown"])
 
 
+class RulesetTests(RepoTestCase):
+    def ruleset(self, *checks: tuple[str, int | None]) -> None:
+        required = [{"context": c, **({"integration_id": app} if app else {})} for c, app in checks]
+        rules = [{"type": "deletion"}, {"type": "required_status_checks", "parameters": {"required_status_checks": required}}]
+        self.write(".github/rulesets/main.json", json.dumps({"name": "main", "target": "branch", "enforcement": "active", "rules": rules}, indent=2))
+
+    def missing(self, *contexts: str) -> list[str]:
+        self.ruleset(*[(c, 15368) for c in contexts])
+        return [m.split("`")[1] for m in self.messages(ck.check_rulesets(self.root))]
+
+    def test_job_names(self) -> None:
+        text = textwrap.dedent(
+            """\
+            on: [push]
+            jobs:  # all of them
+                lint:  # fast
+                    runs-on: x
+                test:
+                    name: "C# tests"   # quoted, with a hash
+                    strategy:
+                        matrix: {os: [a, b]}
+                quoted:
+                    name: 'Bob''s build'
+                folded:
+                    name: >-
+                      long
+                      name
+                    runs-on: x
+                call:
+                    uses: ./.github/workflows/b.yml
+                expr:
+                    name: build ${{ matrix.os }}
+                nested:
+                    steps:
+                      - name: not a job name
+            env:
+              ignored: x
+            """
+        )
+        J = ck.Job
+        self.assertEqual(
+            ck.jobs_in(text),
+            {
+                "lint": J("lint", False, False),
+                "test": J("C# tests", True, False),
+                "quoted": J("Bob's build", False, False),
+                "folded": J("long name", False, False),
+                "call": J("call", False, True),
+                "expr": J("build ${{ matrix.os }}", False, False),
+                "nested": J("nested", False, False),
+            },
+        )
+
+    def test_matching(self) -> None:
+        self.write(
+            ".github/workflows/a.yml",
+            "on: [push]\njobs:\n  lint:\n    runs-on: x\n  test:\n    name: unit tests\n    strategy:\n      matrix: {os: [a]}\n"
+            "  call:\n    uses: ./.github/workflows/b.yml\n  build:\n    name: build ${{ inputs.os }}\n",
+        )
+        self.assertEqual(self.missing("lint", "unit tests", "unit tests (ubuntu)", "call / inner", "build ubuntu-26.04"), [])
+        # Suffixes only for matrix and reusable jobs; renamed or partial names still fail.
+        self.assertEqual(self.missing("lint (removed-os)", "lint / gone", "checks", "unit"), ["lint (removed-os)", "lint / gone", "checks", "unit"])
+
+    def test_folded_name_does_not_hide_a_missing_check(self) -> None:
+        self.write(".github/workflows/a.yml", "jobs:\n  docs:\n    name: >-\n      build docs\n    runs-on: x\n")
+        self.assertEqual(self.missing("build docs", "toolkit-checks"), ["toolkit-checks"])
+
+    def test_same_job_id_in_two_workflows(self) -> None:
+        self.write(".github/workflows/a.yml", "jobs:\n  test:\n    runs-on: x\n")
+        self.write(".github/workflows/b.yaml", "jobs:\n  test:\n    name: unit tests\n")
+        self.assertEqual(self.missing("test", "unit tests"), [])
+
+    def test_only_checks_bound_to_actions_are_verified(self) -> None:
+        self.write(".github/workflows/a.yml", "jobs:\n  lint:\n    runs-on: x\n")
+        self.ruleset(("ci/circleci: build", 18001), ("any-app", None), ("lint", 15368), ("gone", 15368))
+        self.assertEqual([m.split("`")[1] for m in self.messages(ck.check_rulesets(self.root))], ["gone"])
+
+    def test_finding_points_at_the_line(self) -> None:
+        self.write(".github/workflows/a.yml", "jobs:\n  lint:\n    runs-on: x\n")
+        self.ruleset(("gone", 15368))
+        finding = ck.check_rulesets(self.root)[0]
+        self.assertEqual(finding.line, read_line_number(self.root / ".github/rulesets/main.json", '"gone"'))
+
+    def test_invalid_input(self) -> None:
+        self.write(".github/rulesets/bad.json", "{ nope")
+        self.write(".github/rulesets/shape.json", json.dumps({"name": "x"}))
+        self.write(".github/rulesets/params.json", json.dumps({"name": "p", "target": "branch", "enforcement": "active", "rules": [{"type": "required_status_checks", "parameters": "oops"}]}))
+        (self.root / ".github/workflows").mkdir(parents=True)
+        (self.root / ".github/workflows/latin1.yml").write_bytes("name: caf\xe9\n".encode("latin-1"))
+        messages = self.messages(ck.check_rulesets(self.root))
+        self.assertTrue(any("not valid JSON" in m for m in messages))
+        self.assertIn("a ruleset must be an object with a `rules` list", messages)
+        self.assertTrue(any("needs `parameters.required_status_checks`" in m for m in messages))
+        self.assertIn("not UTF-8, so its jobs couldn't be read", messages)
+
+
+def read_line_number(path: Path, needle: str) -> int:
+    return next(i for i, line in enumerate(path.read_text().splitlines(), 1) if needle in line)
+
+
 class OutputTests(unittest.TestCase):
     def test_annotation_escapes_and_attaches_to_line(self) -> None:
         finding = ck.Finding("a,b:c.md", 7, "100% broken\nlink")

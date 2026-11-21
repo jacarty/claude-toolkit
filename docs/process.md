@@ -5,7 +5,7 @@
 ## Branch and PR cadence
 
 - One branch per feature or build-guide sub-section.
-- One PR per branch. Run every pre-PR gate below and fold their fixes into the branch **before** opening the PR. Squash-merge to `main` and delete the branch on merge.
+- One PR per branch. Run every pre-PR gate below and fold their fixes into the branch **before** opening the PR. Merge to `main` with a merge commit by default, which keeps the branch's history (squash instead when its commits are just noise, such as a string of fix-ups). GitHub deletes the branch on merge. The `main-protection` ruleset enforces PR-only changes to `main` and a passing `toolkit-checks`; apply it to a new repo with `.github/scripts/apply-repo-defaults.sh`.
 - **Nothing commits directly to `main`, including docs-only changes** (status log, tech-debt, process doc, ADRs). Docs go on a `docs/<slug>` branch and through a PR. Small ones usually qualify for the trivial-change fast path.
 
 **Branch naming:** `<type>/<slug>`, where `<type>` is a Conventional Commits type (`feat`, `fix`, `docs`, `ci`, `chore`, `refactor`, `test`, …). Branches and commit messages use the same set of types (the hooks enforce both).
@@ -32,7 +32,7 @@ If no issue exists for the work, create one before opening the PR so the board r
 
 ## Remote gates on every PR
 
-- **`toolkit-checks`** (`.github/workflows/toolkit-checks.yml`): Claude Code settings are strict JSON, hook scripts exist and pass ShellCheck, skill and agent frontmatter is valid, and links between docs resolve. Run it locally with `python3 -I .github/scripts/check_toolkit.py` (ShellCheck separately).
+- **`toolkit-checks`** (`.github/workflows/toolkit-checks.yml`): Claude Code settings are strict JSON, hook scripts exist and pass ShellCheck, rulesets require only checks that exist, skill and agent frontmatter is valid, and links between docs resolve. It's a required check in the `main-protection` ruleset. Run it locally with `python3 -I .github/scripts/check_toolkit.py` (ShellCheck separately).
 
 <!-- Add the other checks that run on every PR in this repo, e.g.:
 - **CI** (`ci`): lint, tests and a build.

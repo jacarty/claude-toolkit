@@ -28,7 +28,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  checks:
+  toolkit-checks:
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
@@ -45,6 +45,10 @@ jobs:
         if: ${{ !cancelled() }}
         run: python3 -I .github/scripts/check_toolkit.py settings
 
+      - name: Rulesets match the workflows
+        if: ${{ !cancelled() }}
+        run: python3 -I .github/scripts/check_toolkit.py rulesets
+
       - name: Skill and agent frontmatter
         if: ${{ !cancelled() }}
         run: python3 -I .github/scripts/check_toolkit.py frontmatter
@@ -59,9 +63,12 @@ jobs:
 
       # ShellCheck comes with GitHub's Ubuntu runner image (0.11 on 26.04). The file list
       # tolerates a project that has removed either hooks folder.
-      - name: ShellCheck hook scripts
+      - name: ShellCheck scripts
         if: ${{ !cancelled() }}
         run: |
           # `|| true`: find exits 1 for a missing folder, and run steps use pipefail.
-          { find .claude/hooks .githooks -type f \( -name '*.sh' -o -perm -u+x \) -print0 2>/dev/null || true; } \
-            | xargs -0 -r shellcheck
+          # .github/scripts holds Python too, so only *.sh there.
+          {
+            find .claude/hooks .githooks -type f \( -name '*.sh' -o -perm -u+x \) -print0 2>/dev/null || true
+            find .github/scripts -type f -name '*.sh' -print0 2>/dev/null || true
+          } | xargs -0 -r shellcheck

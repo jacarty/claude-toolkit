@@ -74,7 +74,7 @@ project/
 
 ## Git Workflow
 
-**Branch strategy:** branch → PR → squash-merge to main. Branches are `<type>/<slug>`, where `<type>` is a Conventional Commits type. See `docs/process.md`.
+**Branch strategy:** branch → PR → merge to main (a merge commit by default, to keep the branch's history; squash when its commits are just noise). `main` is protected by the `main-protection` ruleset (`.github/rulesets/`). Branches are `<type>/<slug>`, where `<type>` is a Conventional Commits type. See `docs/process.md`.
 
 ```
 main                    ← production; protected

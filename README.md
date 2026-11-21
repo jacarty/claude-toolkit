@@ -119,22 +119,39 @@ All hooks can be bypassed with `--no-verify` when needed.
 
 | File | Purpose |
 |---|---|
-| `CODEOWNERS` | Default code ownership — set to a `@YOUR-GITHUB-USERNAME` placeholder you must replace |
+| `CODEOWNERS` | Default code ownership. Ships with a `@YOUR-GITHUB-USERNAME` placeholder that `init-from-template.sh` fills in |
 | `SECURITY.md` | Security policy with vulnerability reporting instructions |
 | `pull_request_template.md` | Default PR description with What/Why/How/Testing sections and a checklist that includes the pre-PR gates |
 | `ISSUE_TEMPLATE/bug_report.yml` | Structured bug report form |
 | `ISSUE_TEMPLATE/feature_request.yml` | Structured feature request form |
-| `workflows/toolkit-checks.yml` | CI on every PR and push to `main`, running four checks (below). Keep it in projects you create from the template, and add your own build and test workflow next to it |
+| `workflows/toolkit-checks.yml` | CI on every PR and push to `main`, running the checks below. Keep it in projects you create from the template, and add your own build and test workflow next to it |
 | `scripts/check_toolkit.py` | The checks the workflow runs, standard library only; CI runs it on Python 3.14. Run locally with `python3 -I .github/scripts/check_toolkit.py` |
 | `scripts/test_check_toolkit.py` | Unit tests for the checker, also run by the workflow: `python3 -I -m unittest discover -s .github/scripts -p 'test_*.py'` |
 | `dependabot.yml` | Weekly PRs to bump the SHA-pinned GitHub Actions. Add your project's own package ecosystems here |
+| `rulesets/main-protection.json` | Protection for the default branch, kept as code. Changes only through PRs; merge commits or squash; no force-pushes or deletion; `toolkit-checks` must pass. Repo admins can bypass on a PR, never by pushing directly |
+| `scripts/init-from-template.sh` | First-run setup for a new repo: fills in placeholders and installs the git hooks. Previews by default and is safe to re-run. It edits only tracked files, and refuses to apply unless `gh` confirms the repo isn't the template itself (or you pass `--skip-template-check`) |
+| `scripts/apply-repo-defaults.sh` | Applies the rulesets and the repo settings a template doesn't copy (below) |
 
-`toolkit-checks` runs four checks:
+**Repo defaults.** "Use this template" copies files, not settings, so a new repo starts with `main` unprotected. `.github/scripts/apply-repo-defaults.sh` shows what it would change; add `--apply` to apply it. It needs `gh` with admin on the repo. It sets:
+
+- every ruleset in `.github/rulesets/`, created or updated in place by name;
+- merge commits and squash allowed (no rebase), and branches deleted on merge;
+- secret scanning and push protection;
+- Dependabot alerts and security updates;
+- private vulnerability reporting.
+
+`--approvals N` requires reviews for team repos; the default is 0 for solo work. Rulesets on private repos need GitHub Pro or above. Secret scanning on private repos needs GitHub Secret Protection. Anything GitHub refuses is reported, and the rest still applies.
+
+Apply the ruleset once the default branch's CI has reported `toolkit-checks` at least once, which for a new repo means after its first push. Any open PR still on an older workflow then needs an update from `main` before it can merge.
+
+`toolkit-checks` runs these checks:
 
 - `.claude/settings.json` is strict JSON. Claude Code skips the whole file on a `//` comment or a trailing comma, silently dropping every permission and hook.
 - Hook scripts exist and are executable.
+- Every status check a ruleset requires is a real workflow job. A renamed job would otherwise block every merge.
 - Skill and agent names match their folders, and every description fits the skill listing.
-- Relative links and images between docs resolve (code blocks and HTML comments are skipped), and ShellCheck passes on the hook scripts.
+- Relative links and images between docs resolve (code blocks and HTML comments are skipped).
+- ShellCheck passes on the hook scripts and `.github/scripts/*.sh`.
 
 Each check runs even when an earlier one fails, and errors are annotated on the line in the PR diff.
 
@@ -196,7 +213,7 @@ This replaces a Haiku `linter` subagent: deterministic tooling does the same job
 | `.gitignore` | Comprehensive ignore rules covering Python, Node.js, IDE files, secrets, build outputs, and OS-generated files |
 | `AGENTS.md` | Project context skeleton, read by Claude Code, Codex and Antigravity — fill in your architecture, conventions, and patterns |
 | `CLAUDE.md` | One line, `@AGENTS.md`, so Claude Code loads the shared instructions. Don't add content here |
-| `LICENSE` | MIT licence — placeholder copyright holder you must replace |
+| `LICENSE` | MIT licence. Ships with `[year]` and `[your name]` placeholders that `init-from-template.sh` fills in |
 
 ## Getting started
 
@@ -204,9 +221,9 @@ This replaces a Haiku `linter` subagent: deterministic tooling does the same job
 
 1. Click **Use this template** on GitHub to create a new repository
 2. Clone your new repo
-3. Enable git hooks: `./.githooks/setup-hooks.sh`
-4. Update `.github/CODEOWNERS` — replace `@YOUR-GITHUB-USERNAME` with your GitHub handle or team
-5. Update `LICENSE` — replace the `[year]` and `[your name]` placeholders
+3. Run the first-run setup: `.github/scripts/init-from-template.sh` to preview, then `--apply`. It fills in the project name (AGENTS.md and the doc templates), the CODEOWNERS owner and the LICENSE holder, and installs the git hooks. The defaults come from `gh` and `git config`; override them with `--name`, `--owner` and `--author`.
+4. Review the changes with `git diff`, then commit them on a branch and open a PR
+5. Once CI has reported `toolkit-checks`, protect `main` and set the repo defaults: `.github/scripts/apply-repo-defaults.sh` to preview, then `--apply` (see Repo defaults above)
 6. Fill in `AGENTS.md` with your project's architecture and conventions (look for `[...]` and `<!-- ... -->` placeholders)
 7. Copy any optional permissions you need from `.claude/settings.example.jsonc` into `.claude/settings.json` (strict JSON: no comments, no trailing commas)
 8. Optional: install and log in to the [`codex`](https://github.com/openai/codex) and Antigravity (`agy`) CLIs for the cross-model review skills
