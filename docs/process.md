@@ -32,7 +32,9 @@ If no issue exists for the work, create one before opening the PR so the board r
 
 ## Remote gates on every PR
 
-<!-- List the checks that run on every PR in this repo, e.g.:
+- **`toolkit-checks`** (`.github/workflows/toolkit-checks.yml`): Claude Code settings are strict JSON, hook scripts exist and pass ShellCheck, skill and agent frontmatter is valid, and links between docs resolve. Run it locally with `python3 -I .github/scripts/check_toolkit.py` (ShellCheck separately).
+
+<!-- Add the other checks that run on every PR in this repo, e.g.:
 - **CI** (`ci`): lint, tests and a build.
 - **Codex GitHub review:** address every P0/P1 before merging — fix it, or justify it in the PR.
 - **Security scan** (Wiz, CodeQL, …): a finding under a blocking policy must be fixed; it can't be justified.

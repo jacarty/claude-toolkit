@@ -124,6 +124,21 @@ All hooks can be bypassed with `--no-verify` when needed.
 | `pull_request_template.md` | Default PR description with What/Why/How/Testing sections and a checklist that includes the pre-PR gates |
 | `ISSUE_TEMPLATE/bug_report.yml` | Structured bug report form |
 | `ISSUE_TEMPLATE/feature_request.yml` | Structured feature request form |
+| `workflows/toolkit-checks.yml` | CI on every PR and push to `main`, running four checks (below). Keep it in projects you create from the template, and add your own build and test workflow next to it |
+| `scripts/check_toolkit.py` | The checks the workflow runs, standard library only; CI runs it on Python 3.14. Run locally with `python3 -I .github/scripts/check_toolkit.py` |
+| `scripts/test_check_toolkit.py` | Unit tests for the checker, also run by the workflow: `python3 -I -m unittest discover -s .github/scripts -p 'test_*.py'` |
+| `dependabot.yml` | Weekly PRs to bump the SHA-pinned GitHub Actions. Add your project's own package ecosystems here |
+
+`toolkit-checks` runs four checks:
+
+- `.claude/settings.json` is strict JSON. Claude Code skips the whole file on a `//` comment or a trailing comma, silently dropping every permission and hook.
+- Hook scripts exist and are executable.
+- Skill and agent names match their folders, and every description fits the skill listing.
+- Relative links and images between docs resolve (code blocks and HTML comments are skipped), and ShellCheck passes on the hook scripts.
+
+Each check runs even when an earlier one fails, and errors are annotated on the line in the PR diff.
+
+Actions are pinned to commit SHAs, and the job token is read-only.
 
 ### Claude Code permissions (`.claude/settings.json`)
 
@@ -278,20 +293,20 @@ Instructions for how Claude should handle this type of request.
 
 Everything is modular. Delete any agent, skill, command, or hook you don't use. The remaining components work independently.
 
-### Recommended project structure
+### Project docs (`docs/`)
 
-Once you start building, consider adding:
+Templates for the documents that the process, skills and agents read and write. Fill them in as the project takes shape:
 
 ```
 docs/
-├── prd/                    # Product requirements documents
-├── build-guides/           # Phase-by-phase implementation guides
-├── decisions/              # Architecture Decision Records (ADRs)
-├── process.md              # Development process (included)
-└── tech-debt.md            # Known gaps and drift
+├── prd/v1.0-prd.md                    # Product requirements; fill in with the requirements-elicitation skill
+├── build-guides/v1.0-build-guide.md   # Phases with verification checklists; fill in with the implementation-spec skill
+├── decisions/0000-template.md         # ADR template: copy to NNNN-short-title.md
+├── process.md                         # Development process and agent cadence
+└── tech-debt.md                       # Known gaps and drift
 ```
 
-The process doc and agents reference this structure.
+The phase-acceptance agent checks a finished phase against the PRD and the build guide's verification checklist. AGENTS.md points at both.
 
 ## Licence
 
