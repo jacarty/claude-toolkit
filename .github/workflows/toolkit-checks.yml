@@ -1,0 +1,67 @@
+# Checks the agent tooling and docs that ship with this template:
+# Claude Code settings, skill and agent definitions, hook scripts, and links
+# between docs. They're generic, so keep this workflow in projects created
+# from the template and add your own build and test workflow alongside it.
+# If your default branch isn't `main`, change it under `push` below.
+#
+# Versions: current major releases only, and nothing released less than 7
+# days ago (supply-chain cool-down; see AGENTS.md). Actions are pinned to the
+# commit SHA of a release, and Dependabot bumps them after the same 7 days.
+# The checks use the runner's own Python 3.14 and ShellCheck rather than
+# extra setup actions: fewer third-party dependencies. GitHub rebuilds hosted
+# runner images weekly, so the image (and the tools in it) is the one part
+# that can't be held back.
+
+name: toolkit-checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Superseded PR runs are cancelled; every push to main gets its own result.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  checks:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 (2026-07-20)
+        with:
+          persist-credentials: false
+
+      - name: Tool versions
+        run: python3 --version && shellcheck --version
+
+      # Each check runs even if an earlier one failed, so one push shows
+      # every problem.
+      - name: Claude Code settings are strict JSON
+        if: ${{ !cancelled() }}
+        run: python3 -I .github/scripts/check_toolkit.py settings
+
+      - name: Skill and agent frontmatter
+        if: ${{ !cancelled() }}
+        run: python3 -I .github/scripts/check_toolkit.py frontmatter
+
+      - name: Links between docs
+        if: ${{ !cancelled() }}
+        run: python3 -I .github/scripts/check_toolkit.py links
+
+      - name: Checker tests
+        if: ${{ !cancelled() }}
+        run: python3 -I -m unittest discover -s .github/scripts -p 'test_*.py'
+
+      # ShellCheck comes with GitHub's Ubuntu runner image (0.11 on 26.04). The file list
+      # tolerates a project that has removed either hooks folder.
+      - name: ShellCheck hook scripts
+        if: ${{ !cancelled() }}
+        run: |
+          # `|| true`: find exits 1 for a missing folder, and run steps use pipefail.
+          { find .claude/hooks .githooks -type f \( -name '*.sh' -o -perm -u+x \) -print0 2>/dev/null || true; } \
+            | xargs -0 -r shellcheck

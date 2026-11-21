@@ -104,7 +104,8 @@ js_tools() {
         # on bash < 4.4, which includes stock macOS bash.)
         local quiet=""
         has eslint.config.* && quiet="--no-warn-ignored"
-        # shellcheck disable=SC2086  # $quiet is empty or one flag
+        # $quiet is empty or one flag, so it's left unquoted on purpose.
+        # shellcheck disable=SC2086
         "$e" --fix $quiet "$file" >/dev/null 2>&1
         # shellcheck disable=SC2086
         out=$("$e" $quiet "$file" 2>&1) || note "$out"

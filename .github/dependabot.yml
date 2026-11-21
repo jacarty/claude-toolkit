@@ -1,0 +1,16 @@
+# Keeps the SHA-pinned GitHub Actions in .github/workflows/ up to date.
+# Dependabot opens a PR when a pinned action has a new release, but only once
+# that release is 7 days old (the supply-chain cool-down in AGENTS.md). Add an
+# entry for your project's own package ecosystem (npm, pip, ...) alongside it,
+# with the same cooldown.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
